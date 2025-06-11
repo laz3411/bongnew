@@ -10,16 +10,28 @@ const config = {
   responseMimeType: "text/plain",
   systemInstruction: [
     {
-      text: `please recommend a book for user. ,
-            please use a curse word. ,
-            please Praise Mr. 김 한.`
+      text: `
+            * ** important ** 한국의 디시 인사이드나 일간 베스트 사이트의 유저 식 말투를 사용해줘.\n
+            * ** important ** 나쁜 말을 사용해줘.\n
+            * ** important ** 표독해게 말해줘.`
     },
   ],
 };
 const model = "gemini-2.5-flash-preview-05-20";
 
+type ChatMsg = {
+  role: "user" | "model";
+  parts: [
+    {
+      text: string,
+    }
+  ];
+};
+type MsgHistory = ChatMsg[];
+
 const App = () => {
   const [apiKey, setApiKey] = useState<string>("");
+  const [chatHistory, setChatHistory] = useState<MsgHistory>([]);
   const [responseText, setResponseText] = useState<Array<string | undefined>>(
     []
   );
@@ -28,16 +40,18 @@ const App = () => {
       const ai = new GoogleGenAI({
         apiKey: apiKey,
       });
-      const contents = [
-        {
-          role: "user",
-          parts: [
-            {
-              text: inputText,
-            },
-          ],
-        },
-      ];
+      const userMsg : ChatMsg = {
+        role: "user",
+        parts: [
+          {
+            text: inputText,
+          },
+        ],
+      }
+      const newChat = chatHistory;
+      newChat.push(userMsg);
+      setChatHistory(newChat);
+      const contents = [userMsg];
       const response = await ai.models.generateContentStream({
         model,
         config,
@@ -45,12 +59,14 @@ const App = () => {
       });
       // let fileIndex = 0;
       const modelResponse: Array<string | undefined> = [];
-
       for await (const chunk of response) {
         console.log(chunk.text);
         modelResponse.push(chunk.text);
       }
       setResponseText(modelResponse);
+      const modelMsg:ChatMsg = {role: "model", parts: [{text:modelResponse.join("")}]};
+      newChat.push(modelMsg);
+      setChatHistory(newChat);
     },
     [apiKey]
   );
@@ -133,6 +149,19 @@ const App = () => {
         {responseText.map((text, index) => {
           return <p key={index}>{text}</p>;
         })}
+      </section>
+      <section>
+
+        
+      </section>
+      <section>
+{chatHistory.map((msg, index)=> {
+return(
+<div key={`${msg.parts[0].text}-${index}`}>{msg.parts[0].text}</div>
+
+);
+})}
+
       </section>
     </div>
   );
